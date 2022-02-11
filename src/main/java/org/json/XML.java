@@ -248,14 +248,14 @@ public class XML {
     }
 
     /**
-     * Scan the content following the named tag, attaching it to the context.
-     *
-     * @param x
-     *            The XMLTokener containing the source string.
-     * @param context
-     *            The JSONObject that will include the new material.
-     * @param name
-     *            The tag name.
+     * Scan the content following the named tag, attaching it to the context. Method for use with
+     * overloaded method # 1 and # 2 toJSONObject.
+     * @param x The XMLTokener containing the source string.
+     * @param context The JSONObject that will include the new material.
+     * @param name The tag name.
+     * @param config Configuration options for the parser.
+     * @param key The key obtained from the path.
+     * @param replace The JSONObject replacing the key's JSONObject.
      * @return true if the close tag is processed.
      * @throws JSONException
      */
@@ -283,43 +283,40 @@ public class XML {
 
         // Task 2
          System.out.println("Start of method x:" + x.toString() + ", context: " + context + ", name: " + name + ", key: " + key + ", replace: " + replace + ", token: " + token.toString()); //
-//        if (key.compareTo("swe262_") == 0) {
-            // Extract keys from String key
-            String[] keys = key.substring(1).split("/");
-            String k = "";
-            // Check for strings that are actually numbers
-            if (keys[keys.length - 1].matches("[-+]?\\d*\\.?\\d+")) {
-                // System.out.println("Last key is a numeric index");
-                k = keys[keys.length - 2]; // Key to remove is before the end of the array
-            } else
-                k = keys[keys.length - 1]; // Key to remove is at the end of the array
+         // Extract keys from String key
+         String[] keys = key.substring(1).split("/");
+         String k = "";
+         // Check for strings that are actually numbers
+         if (keys[keys.length - 1].matches("[-+]?\\d*\\.?\\d+")) {
+             // System.out.println("Last key is a numeric index");
+             k = keys[keys.length - 2]; // Key to remove is before the end of the array
+         } else
+             k = keys[keys.length - 1]; // Key to remove is at the end of the array
 
-            if (token.equals(k)) {
-                System.out.println("#### Replacing xml ####");
-                // Create new XMLTokener
-                String replaceXML = toString(replace);
-                // System.out.println(replaceXML);
-                Reader reader = new StringReader(replaceXML);
-                XMLTokener z = new XMLTokener(reader);
+         if (token.equals(k)) {
+             System.out.println("#### Replacing xml ####");
+             // Create new XMLTokener
+             String replaceXML = toString(replace);
+             // System.out.println(replaceXML);
+             Reader reader = new StringReader(replaceXML);
+             XMLTokener z = new XMLTokener(reader);
 
-                while (z.more()) {
-                    z.skipPast("<");
-                    if (z.more()) {
-                        parse1(z, context, name, config, k, new JSONObject());
-                    }
-                }
-                // System.out.println("exited " + context);
+             while (z.more()) {
+                 z.skipPast("<");
+                 if (z.more()) {
+                     parse1(z, context, name, config, k, new JSONObject());
+                 }
+             }
+             // System.out.println("exited " + context);
 
-                x.nextToken(); //  Consume '>'
-                x.skipPast(token + ">"); // Skip past to the end of the closed tag
-                // System.out.println("done with skipPast" + x.toString());
-                // System.out.println("next token after skipPast: " + token);
-                System.out.println("#### Done replacing xml ####");
-                System.out.println("Returning false");
-                return false;
-            }
-//        }
-
+             x.nextToken(); //  Consume '>'
+             x.skipPast(token + ">"); // Skip past to the end of the closed tag
+             // System.out.println("done with skipPast" + x.toString());
+             // System.out.println("next token after skipPast: " + token);
+             System.out.println("#### Done replacing xml ####");
+             System.out.println("Returning false");
+             return false;
+         }
 
         // <!
 
@@ -488,12 +485,6 @@ public class XML {
                              System.out.println("...Entering recursive parse with name: " + name + ", key: " + key + ", token: " + token + ", tagName: " + tagName + " jsonObject: " + jsonObject + "...");
                             if (parse1(x, jsonObject, tagName, config, key, replace)) {
                                  System.out.println("...End of recursive parse returned true with name: " + name + ", key: " + key + ", token: " + token + ", tagName: " + tagName + " jsonObject: " + jsonObject + "..."); //
-//                                if (key.compareTo("swe262_") == 0) {
-//                                    tagName = keyTransformer.apply(tagName);
-//                                }
-                                // System.out.println("Force list: " + config.getForceList()); //
-                                // System.out.println("*tagName: " + tagName);
-                                // System.out.println("*Size of jsonObject "  + jsonObject + ": " + jsonObject.length()); //
                                 if (config.getForceList().contains(tagName)) {
                                     // Force the value to be an array
                                     if (jsonObject.length() == 0) {
@@ -548,6 +539,18 @@ public class XML {
         }
     }
 
+    /**
+     * Scan the content following the named tag, attaching it to the context. Method for use with
+     * overloaded method # 3 toJSONObject.
+     *
+     * @param x The XMLTokener containing the source string.
+     * @param context The JSONObject that will include the new material.
+     * @param name The tag name.
+     * @param config Configuration options for the parser.
+     * @param keyTransformer Function transformation for the string.
+     * @return true if the close tag is processed.
+     * @throws JSONException
+     */
     private static boolean parse2(XMLTokener x, JSONObject context, String name, XMLParserConfiguration config, Function<String, String> keyTransformer)
             throws JSONException {
         char c;
@@ -586,9 +589,6 @@ public class XML {
                     if (x.next() == '[') {
                         string = x.nextCDATA();
                         if (string.length() > 0) {
-//                            String cDataTagName = config.getcDataTagName();
-//                            cDataTagName = keyTransformer.apply(cDataTagName);
-//                            context.accumulate(cDataTagName, string); // Content not changed here
                             context.accumulate(config.getcDataTagName(), string);
                         }
                         return false;
@@ -647,9 +647,7 @@ public class XML {
                 // attribute = value
                 if (token instanceof String) {
                     string = (String) token;
-//                    System.out.println("attribute = value string: " + string);
-                    string = keyTransformer.apply(string); // Change string
-//                    System.out.println("string after transformation: " + string);
+                    string = keyTransformer.apply(string); // Transform string before accumulate()
                     token = x.nextToken();
                     if (token == EQ) {
                         token = x.nextToken();
@@ -678,9 +676,7 @@ public class XML {
 
                 } else if (token == SLASH) {
                     // Empty tag <.../>
-//                    System.out.println("<.../> tagName: " + tagName);
                     tagName = keyTransformer.apply(tagName); // Change tagName
-//                    System.out.println("Transformed tagName: " + tagName);
                     if (x.nextToken() != GT) {
                         throw x.syntaxError("Misshaped tag");
                     }
@@ -716,18 +712,11 @@ public class XML {
                         } else if (token instanceof String) {
                             string = (String) token;
                             if (string.length() > 0) {
+//                                String cDataTagName = keyTransformer.apply(config.getcDataTagName()); // Transform "content" here causes OutOfMemory error
                                 if(xmlXsiTypeConverter != null) {
-//                                    String cDataTagName = config.getcDataTagName();
-//                                    cDataTagName = keyTransformer.apply(cDataTagName);
-//                                    jsonObject.accumulate(cDataTagName,
-//                                            stringToValue(string, xmlXsiTypeConverter)); // Content not changed here
                                     jsonObject.accumulate(config.getcDataTagName(),
                                             stringToValue(string, xmlXsiTypeConverter));
                                 } else {
-//                                    String cDataTagName = config.getcDataTagName();
-//                                    cDataTagName = keyTransformer.apply(cDataTagName);
-//                                    jsonObject.accumulate(cDataTagName,
-//                                            config.isKeepStrings() ? string : stringToValue(string)); // OutOfMemoryError
                                     jsonObject.accumulate(config.getcDataTagName(),
                                             config.isKeepStrings() ? string : stringToValue(string));
                                 }
@@ -735,20 +724,14 @@ public class XML {
 
                         } else if (token == LT) {
                             // Nested element
-//                            System.out.println("Before parse2 tagName: " + tagName);
                             if (parse2(x, jsonObject, tagName, config, keyTransformer)) {
-//                                System.out.println("After parse2 tagName: " + tagName);
                                 tagName = keyTransformer.apply(tagName);
-//                                System.out.println("Transformed tagName: " + tagName);
                                 if (config.getForceList().contains(tagName)) {
                                     // Force the value to be an array
                                     if (jsonObject.length() == 0) {
                                         context.put(tagName, new JSONArray());
                                     } else if (jsonObject.length() == 1
                                             && jsonObject.opt(config.getcDataTagName()) != null) {
-//                                        String cDataTagName = config.getcDataTagName();
-//                                        cDataTagName = keyTransformer.apply(cDataTagName);
-//                                        context.append(tagName, jsonObject.opt(cDataTagName)); // Content not changed here
                                         context.append(tagName, jsonObject.opt(config.getcDataTagName()));
                                     } else {
                                         context.append(tagName, jsonObject);
@@ -758,9 +741,6 @@ public class XML {
                                         context.accumulate(tagName, "");
                                     } else if (jsonObject.length() == 1
                                             && jsonObject.opt(config.getcDataTagName()) != null) {
-//                                        String cDataTagName = config.getcDataTagName();
-//                                        cDataTagName = keyTransformer.apply(cDataTagName);
-//                                        context.accumulate(tagName, jsonObject.opt(cDataTagName)); // Content not changed here
                                         context.accumulate(tagName, jsonObject.opt(config.getcDataTagName()));
                                     } else {
                                         context.accumulate(tagName, jsonObject);
@@ -777,8 +757,18 @@ public class XML {
             }
         }
     }
-    /*
-     * Original Parse
+
+    /**
+     * Scan the content following the named tag, attaching it to the context.
+     *
+     * @param x
+     *            The XMLTokener containing the source string.
+     * @param context
+     *            The JSONObject that will include the new material.
+     * @param name
+     *            The tag name.
+     * @return true if the close tag is processed.
+     * @throws JSONException
      */
     private static boolean parse(XMLTokener x, JSONObject context, String name, XMLParserConfiguration config)
             throws JSONException {
@@ -1147,52 +1137,95 @@ public class XML {
      */
     public static JSONObject toJSONObject(Reader reader) throws JSONException {
         return toJSONObject(reader, XMLParserConfiguration.ORIGINAL);
-//        return toJSONObject(reader, XMLParserConfiguration.ORIGINAL, "catalog", null);
     }
 
-    /*
-     * Milestone 2: Overloaded methods toJSONObject
+    /**
+     * Overloaded method # 1 toJSONObject.
+     * @param reader The XML source reader.
+     * @param path The JSONPointer containing the path.
+     * @return A JSONObject containing the specified sub-object.
+     * @throws JSONException Thrown if there is an errors while parsing the string.
      */
-    public static JSONObject toJSONObject(Reader reader, JSONPointer path)
-            throws JSONException, Exception {
-        String strPath = path.toString();
-        // Path is empty
-        if (strPath == null ||strPath.length() == 0) {
-//             return toJSONObject(reader); // return full object
+    public static JSONObject toJSONObject(Reader reader, JSONPointer path) throws JSONException, Exception {
+        if (path.toString() == null || path.toString().length() == 0) {
             throw new Exception("Path cannot be null or empty");
         }
-        // System.out.println("strPath : " + strPath);
+        String strPath = path.toString();
         String[] keys = strPath.substring(1).split("/");
         String nameOfObj = keys[keys.length - 1];
-        // System.out.println("key : " + nameOfObj);
-        JSONObject jobj = null;
+        JSONObject jobj = null; // This is only used as a placeholder
         return toJSONObject(reader, XMLParserConfiguration.ORIGINAL, nameOfObj, jobj);
     }
-    public static JSONObject toJSONObject(Reader reader, JSONPointer path, JSONObject replacement)
-            throws JSONException, Exception {
-        String strPath = path.toString();
-        // Path is empty
-        if (strPath == null || strPath.length() == 0) {
-//            return toJSONObject(reader);
+
+    /**
+     * Overloaded method # 2 toJSONObject.
+     * @param reader The XML source reader.
+     * @param path The JSONPointer containing the path.
+     * @param replacement The JSONObject replacement.
+     * @return A JSONObject with the replacement object.
+     * @throws JSONException Thrown if there is an errors while parsing the string.
+     */
+    public static JSONObject toJSONObject(Reader reader, JSONPointer path, JSONObject replacement) throws JSONException, Exception {
+        if (path.toString() == null || path.toString().length() == 0) {
             throw new Exception("Path cannot be null or empty");
         }
-        // System.out.println("strPath : " + strPath);
-        String xml = toString(replacement);
-        // System.out.println("XML replacement: " + xml);
+        String strPath = path.toString();
         return toJSONObject(reader, XMLParserConfiguration.ORIGINAL, strPath, replacement);
     }
 
-    public static JSONObject toJSONObject(Reader reader, XMLParserConfiguration config,
-                                          String key, JSONObject jobj) throws JSONException {
+    /**
+     * Overloaded method #3 toJSONObject.
+     * @param reader The XML source reader.
+     * @param keyTransformer The function that transforms and returns updated key
+     * @return A JSONObject with transformed keys
+     * @throws JSONException Thrown if there is an errors while parsing the string.
+     */
+    public static JSONObject toJSONObject(Reader reader, Function<String, String> keyTransformer) {
+        return toJSONObject(reader, XMLParserConfiguration.ORIGINAL, keyTransformer);
+    }
+
+    /**
+     * Helper method for methods 1 and 2. It uses the parse1 function.
+     * @param reader The XML source reader.
+     * @param config Configuration options for the parser.
+     * @param key A JSONObject containing the structured data from the XML string.
+     * @param jobj
+     * @return A JSONObject containing the structured data from the XML string.
+     * @throws JSONException Thrown if there is an errors while parsing the string or parsing ends prematurely.
+     */
+    public static JSONObject toJSONObject(Reader reader, XMLParserConfiguration config, String key, JSONObject jobj) throws JSONException {
         JSONObject jo = new JSONObject();
         XMLTokener x = new XMLTokener(reader);
         try {
-            while (x.more()) { // more() is in JSONTokener: Determine if the source string still contains characters that next() can consume.
-                x.skipPast("<"); // skipPast() is in XMLTokener: Skip characters until past the requested string.
-                if (x.more()) {
+            while (x.more()) {
+                x.skipPast("<");
+                if (x.more())
                     parse1(x, jo, null, config, key, jobj);
-                    // System.out.println("jo: " + jo);
-                }
+            }
+            return jo;
+        } catch (JSONException ignore) {
+            System.out.println(ignore.getMessage());
+            // Caught exception, return JSONObject clone before exception was thrown
+            return globalXMLtoJSONObj;
+        }
+    }
+
+    /**
+     * Helper method for method 3. It uses the parse2 function.
+     * @param reader The XML source reader.
+     * @param config Configuration options for the parser.
+     * @param keyTransformer The function that transforms and returns updated key
+     * @return A JSONObject containing the structured data from the XML string.
+     * @throws JSONException Thrown if there is an errors while parsing the string or parsing ends prematurely.
+     */
+    public static JSONObject toJSONObject(Reader reader, XMLParserConfiguration config, Function<String, String> keyTransformer) throws JSONException {
+        JSONObject jo = new JSONObject();
+        XMLTokener x = new XMLTokener(reader);
+        try {
+            while (x.more()) {
+                x.skipPast("<");
+                if (x.more())
+                    parse2(x, jo, null, config, keyTransformer);
             }
             return jo;
         }
@@ -1201,40 +1234,6 @@ public class XML {
             // Caught exception, return JSONObject clone before exception was thrown
             return globalXMLtoJSONObj;
         }
-    }
-
-    /*
-     * Milestone 3
-     */
-//    public static JSONObject toJSONObject(Reader reader, Function<String, String> keyTransformer) {
-//        String str = "swe262_"; // Flag String
-//        JSONObject jobj = null; // Placeholder JSONObject
-//        return toJSONObject(reader, XMLParserConfiguration.ORIGINAL, str, jobj);
-//    }
-//    public static Function<String, String> keyTransformer = input -> "swe262_" + input;
-//    public static Function<String, String> keyTransformer = input -> {
-//        String reverse = "";
-//        char c;
-//        for (int i = 0; i < input.length(); i++) {
-//            c = input.charAt(i);
-//            reverse = c + reverse;
-//        }
-//        return reverse;
-//    };
-    public static JSONObject toJSONObject(Reader reader, Function<String, String> keyTransformer) {
-        return toJSONObject(reader, XMLParserConfiguration.ORIGINAL, keyTransformer);
-    }
-    public static JSONObject toJSONObject(Reader reader, XMLParserConfiguration config,
-                                          Function<String, String> keyTransformer) throws JSONException {
-        JSONObject jo = new JSONObject();
-        XMLTokener x = new XMLTokener(reader);
-        while (x.more()) {
-            x.skipPast("<");
-            if(x.more()) {
-                parse2(x, jo, null, config, keyTransformer);
-            }
-        }
-        return jo;
     }
 
     /**
