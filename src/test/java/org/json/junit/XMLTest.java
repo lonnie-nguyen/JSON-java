@@ -24,12 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -40,17 +34,15 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
-import org.json.XML;
-import org.json.XMLParserConfiguration;
-import org.json.XMLXsiTypeConverter;
+import org.json.*;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+
+import static org.junit.Assert.*;
+import static org.junit.Assert.assertThrows;
 
 
 /**
@@ -1068,5 +1060,186 @@ public class XMLTest {
             });
             fail("Expected to be unable to modify the config");
         } catch (Exception ignored) { }
+    }
+
+    /**
+     * Should return correct SubObject from the overloaded toJSONObject function
+     */
+    @Test
+    public void shouldReturnCorrectSubObject() throws Exception {
+
+        String xmlStr =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+                        "<addresses>\n"+
+                        "   <address>\n"+
+                        "       <name>Joe Tester</name>\n"+
+                        "       <street>Baker street 5</street>\n"+
+                        "   </address>\n"+
+                        "</addresses>";
+
+        Reader xmlR = new StringReader(xmlStr);
+
+        JSONPointer jsp = new JSONPointer("/addresses/address/street");
+        JSONObject jsonObject = XML.toJSONObject(xmlR, jsp);
+
+        String expectedStr = "{\"street\":\"Baker "+
+                "street 5\",\"name\":\"Joe Tester\"}";
+        JSONObject expectedJsonObject = new JSONObject(expectedStr);
+        Util.compareActualVsExpectedJsonObjects(jsonObject,expectedJsonObject);
+    }
+
+    /**
+     * Should replace correct subobject from the overloaded toJSONObject function
+     */
+    @Test
+    public void shouldReplaceCorrectSubObject() throws Exception {
+
+        String xmlStr =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+                        "<addresses>\n"+
+                        "   <address>\n"+
+                        "       <name>Joe Tester</name>\n"+
+                        "       <street>Baker street 5</street>\n"+
+                        "   </address>\n"+
+                        "</addresses>";
+
+        String replacementObj = "{\"name\":\"Something Replaced\"}";
+        JSONObject replacementJSON = new JSONObject(replacementObj);
+
+        Reader xmlR = new StringReader(xmlStr);
+
+        JSONPointer jsp = new JSONPointer("/addresses/address");
+        JSONObject jsonObject = XML.toJSONObject(xmlR, jsp, replacementJSON);
+
+        String expectedStr = "{\"addresses\":{\"name\":\"Something Replaced\"}}";
+        JSONObject expectedJsonObject = new JSONObject(expectedStr);
+        Util.compareActualVsExpectedJsonObjects(jsonObject,expectedJsonObject);
+    }
+
+    /**
+     * Should throw exception if path is empty or null when overloaded method is called
+     */
+    @Test
+    public void shouldThrowExceptionOnEmptyPathOverloadedOne() throws Exception {
+
+        String xmlStr =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+                        "<addresses>\n"+
+                        "   <address>\n"+
+                        "       <name>Joe Tester</name>\n"+
+                        "       <street>Baker street 5</street>\n"+
+                        "   </address>\n"+
+                        "</addresses>";
+
+        Reader xmlR = new StringReader(xmlStr);
+
+        Throwable exception = assertThrows(
+                Exception.class, () -> {
+                    JSONPointer jsp = new JSONPointer("");
+                    XML.toJSONObject(xmlR, jsp);
+                }
+        );
+
+        assertEquals("Path cannot be null or empty", exception.getMessage());
+    }
+
+    /**
+     * Should throw exception if path is empty or null when overloaded method to
+     * replace sub-object is called
+     */
+    @Test
+    public void shouldThrowExceptionOnEmptyPathOverloadedTwo() throws Exception {
+
+        String xmlStr =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+                        "<addresses>\n"+
+                        "   <address>\n"+
+                        "       <name>Joe Tester</name>\n"+
+                        "       <street>Baker street 5</street>\n"+
+                        "   </address>\n"+
+                        "</addresses>";
+
+        Reader xmlR = new StringReader(xmlStr);
+        String replacementObj = "{\"name\":\"Something Replaced\"}";
+        JSONObject replacementJSON = new JSONObject(replacementObj);
+
+        Throwable exception = assertThrows(
+                Exception.class, () -> {
+                    JSONPointer jsp = new JSONPointer("");
+                    XML.toJSONObject(xmlR, jsp, replacementJSON);
+                }
+        );
+
+        assertEquals("Path cannot be null or empty", exception.getMessage());
+    }
+
+    @Test
+    public void checkKeyReplacement() throws Exception {
+        Function<String, String> changeKey = s -> "swe262_"+s;
+
+        String xmlStr =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+                        "<addresses>\n"+
+                        "   <address>\n"+
+                        "       <name>Joe Tester</name>\n"+
+                        "       <street>Baker street 5</street>\n"+
+                        "   </address>\n"+
+                        "</addresses>";
+
+        Reader xmlR = new StringReader(xmlStr);
+        JSONObject jObj = XML.toJSONObject(xmlR, changeKey);
+
+        String expectedStr = "{\"swe262_addresses\":{\"swe262_address\":{\"swe262_street\":\"Baker street 5\",\"swe262_name\":\"Joe Tester\"}}}";
+        JSONObject expectedObject = new JSONObject(expectedStr);
+
+        Util.compareActualVsExpectedJsonObjects(jObj, expectedObject);
+    }
+
+    @Test
+    public void checkKeyReplacementReverseTransformation() throws Exception {
+        Function<String, String> changeKey = s -> {
+            StringBuilder sb = new StringBuilder();
+            sb.append(s);
+            return sb.reverse().toString();
+        };
+
+        String xmlStr =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+                        "<addresses>\n"+
+                        "   <address>\n"+
+                        "       <name>Joe Tester</name>\n"+
+                        "       <street>Baker street 5</street>\n"+
+                        "   </address>\n"+
+                        "</addresses>";
+
+        Reader xmlR = new StringReader(xmlStr);
+        JSONObject jObj = XML.toJSONObject(xmlR, changeKey);
+
+        String expectedStr = "{\"sesserdda\":{\"sserdda\":{\"teerts\":\"Baker street 5\",\"eman\":\"Joe Tester\"}}}";
+        JSONObject expectedObject = new JSONObject(expectedStr);
+
+        Util.compareActualVsExpectedJsonObjects(jObj, expectedObject);
+    }
+
+    @Test
+    public void checkKeyReplacementUpperCaseTransformation() throws Exception {
+        Function<String, String> changeKey = s -> s.toUpperCase();
+
+        String xmlStr =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+                        "<addresses>\n"+
+                        "   <address>\n"+
+                        "       <name>Joe Tester</name>\n"+
+                        "       <street>Baker street 5</street>\n"+
+                        "   </address>\n"+
+                        "</addresses>";
+
+        Reader xmlR = new StringReader(xmlStr);
+        JSONObject jObj = XML.toJSONObject(xmlR, changeKey);
+
+        String expectedStr = "{\"ADDRESSES\":{\"ADDRESS\":{\"STREET\":\"Baker street 5\",\"NAME\":\"Joe Tester\"}}}";
+        JSONObject expectedObject = new JSONObject(expectedStr);
+
+        Util.compareActualVsExpectedJsonObjects(jObj, expectedObject);
     }
 }
